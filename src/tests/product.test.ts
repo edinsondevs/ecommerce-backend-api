@@ -5,7 +5,7 @@ import { ProductService } from '../services/product.service';
 
 describe('--------------------          ----------------------------', () => {
 	describe('✅🎉 MÓDULO DE PRODUCTOS: CASOS EXITOSOS 🎉✅', () => {
-		it.skip('Debería crear un producto correctamente con datos válidos', async () => {
+		it.skip('1. Debería crear un producto correctamente con datos válidos', async () => {
 			// 1. Generamos un SKU único y dinámico para que NUNCA choque en la base de datos
 			const uniqueSku = `MOU${Math.floor(10000 + Math.random() * 90000)}`;
 
@@ -36,7 +36,7 @@ describe('--------------------          ----------------------------', () => {
 			expect(body.data.id).toBeDefined(); // Verificamos que Prisma le asignó un ID
 		});
 
-		it('Debería crear un producto exitosamente (SIMULADO)', async () => {
+		it('2. Debería crear un producto exitosamente (SIMULADO)', async () => {
 			// 1. EL TRUCO SENIOR: Interceptamos el método 'create' de nuestro servicio
 			// y le decimos que devuelva una promesa resuelta con datos falsos.
 			// ¡PRISMA NUNCA SE ENTERARÁ DE ESTO!
@@ -81,21 +81,40 @@ describe('--------------------          ----------------------------', () => {
 			mockCreate.mockRestore();
 		});
 
-		it('Debería listar solo productos activos', async () => {
-			// 1. Inyectamos la petición para listar productos
+		it('3. Debería listar solo productos activos', async () => {
+			const mockFind = vi
+				.spyOn(ProductService, 'findByStock')
+				.mockResolvedValue([
+					{
+						id: '1',
+						name: 'Pro 1',
+						stock: 50,
+						sku: 'SKU00001',
+						price: 10,
+						description: '',
+						isActive: true,
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					},
+				] as any);
+
+			// // 1. Inyectamos la petición para listar productos
 			const response = await app.inject({
 				method: 'GET',
 				url: '/api/products',
+				query: { stock: '10' }, // Ejemplo de query para filtrar por stock (opcional)
 			});
+
 			expect(response.statusCode).toBe(200); // Verificamos que la respuesta sea exitosa
 
-			// 2. Parseamos la respuesta y verificamos que solo nos devuelva productos activos
+			// // 2. Parseamos la respuesta y verificamos que solo nos devuelva productos activos
 			const body = JSON.parse(response.payload);
-			expect(Array.isArray(body)).toBe(true); // Verificamos que nos devuelva un array
-			expect(body.every((p: any) => p.isActive)).toBe(true); // Verificamos que todos los productos sean activos
+			expect(body.data.length).toBe(1); // Solo debería devolver 1 producto
+			expect(mockFind).toHaveBeenCalledWith(10);
+			mockFind.mockRestore(); // Limpiamos el espía para que no afecte a otros tests
 		});
 
-		it('Debería actualizar un producto correctamente', async () => {
+		it('4. Debería actualizar un producto correctamente', async () => {
 			const productId = '4f20ff23-73b2-40cd-a9aa-729b7032f60a';
 			// 1. Primero, creamos un producto para tener un ID válido
 			const mockUpdate = vi
@@ -135,7 +154,7 @@ describe('--------------------          ----------------------------', () => {
 			mockUpdate.mockRestore();
 		});
 
-		it('Debería eliminar un producto correctamente', async () => {
+		it('5. Debería eliminar un producto correctamente', async () => {
 			// 1. Primero, creamos un producto para tener un ID válido
 			const productId = '4f20ff23-73b2-40cd-a9aa-729b7032f60a';
 			// 2. Interceptamos el método 'delete' de nuestro servicio para simular la eliminación
@@ -168,6 +187,42 @@ describe('--------------------          ----------------------------', () => {
 			// 5. IMPORTANTE: Limpiamos el espía para que no afecte a otros tests
 			mockDelete.mockRestore();
 		});
+
+		it('6. Debería obtener un producto por su ID', async () => {
+			const productId = '4f20ff23-73b2-40cd-a9aa-729b7032f60a';
+			// 1. Interceptamos el método 'getById' de nuestro servicio para simular la obtención del producto
+			const mockGetById = vi
+				.spyOn(ProductService, 'getById')
+				.mockResolvedValue({
+					id: productId,
+					name: 'Mouse Gamer Pro',
+					sku: 'MOU123',
+					price: new Decimal(50),
+					stock: 20,
+					description:
+						'Mouse gamer con iluminación RGB y alta precisión',
+					isActive: true,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				});
+			// 2. Inyectamos la petición para obtener el producto por su ID
+			const response = await app.inject({
+				method: 'GET',
+				url: `/api/products/${productId}`,
+			});
+			
+			// 3. Verificaciones
+			expect(response.statusCode).toBe(200);
+			// 4. Parseamos la respuesta y verificamos que los datos del producto sean correctos
+			const body = JSON.parse(response.payload);
+			
+			expect(body.data.id).toBe(productId);
+			expect(body.data.name).toBe('Mouse Gamer Pro');
+			expect(Number(body.data.price)).toBe(50);
+
+			mockGetById.mockRestore(); // Limpiamos el espía para que no afecte a otros tests
+		});
+
 	});
 });
 
@@ -183,8 +238,8 @@ describe('--------------------          ----------------------------', () => {
 			await app.close();
 		});
 
-		// 3. Ahora sí, nuestras pruebas de validación y manejo de errores
-		it('Debería retornar Error 400 si intentamos crear un producto con precio negativo', async () => {
+		// 3. Ahora sí, empezamos a probar los casos de error y validación
+		it('7. Debería retornar Error 400 si intentamos CREAR un producto con precio negativo', async () => {
 			// Usamos el superpoder .inject() de Fastify
 			const response = await app.inject({
 				method: 'POST',
@@ -207,7 +262,7 @@ describe('--------------------          ----------------------------', () => {
 			expect(body.message).toBe('Datos de entrada inválidos');
 		});
 
-		it('Debería retornar Error 400 si intentamos crear un producto con un SKU invalido', async () => {
+		it('8. Debería retornar Error 400 si intentamos CREAR un producto con un SKU invalido', async () => {
 			// 1. creamos un SKU inválido (menos de 8 caracteres)
 			const invalidSku = 'RRRFTG5'; // Solo 6 caracteres, debería ser 8
 
@@ -231,7 +286,7 @@ describe('--------------------          ----------------------------', () => {
 			expect(body.message).toBe('Datos de entrada inválidos');
 		});
 
-		it('Debería retornar Error 409 si intentamos crear un producto con un SKU existente', async () => {
+		it('9. Debería retornar Error 409 si intentamos CREAR un producto con un SKU existente', async () => {
 			// 1. creamos un SKU inválido (menos de 8 caracteres)
 			const invalidSku = 'RRRF345FTG542'; // Solo 6 caracteres, debería ser 8
 
@@ -257,7 +312,7 @@ describe('--------------------          ----------------------------', () => {
 			);
 		});
 
-		it('Debería retornar Error 404 si intentamos actualizar un producto que no existe', async () => {
+		it('10. Debería retornar Error 404 si intentamos BORRAR un producto que no existe', async () => {
 			const nonExistentId = '4f20ff23-73b2-40cd-a9aa-729b7032f60b'; // ID que no existe en la base de datos
 			const response = await app.inject({
 				method: 'DELETE',
@@ -269,5 +324,19 @@ describe('--------------------          ----------------------------', () => {
 			expect(body.status).toBe('error');
 			expect(body.message).toBe('El recurso solicitado no existe.');
 		});
+
+		it('11. Debería retornar Error 404 si no ENCONTRAMOS un producto', async () => {
+			const nonExistentId = '4f20ff23-73b2-40cd-a9aa-729b7032f60b'; // ID que no existe en la base de datos
+			const response = await app.inject({
+				method: 'GET',
+				url: `/api/products/${nonExistentId}`,
+			});
+			expect(response.statusCode).toBe(404);
+			// Podemos parsear la respuesta y asegurarnos de que nuestro errorHandler funcionó
+			const body = JSON.parse(response.payload);
+			
+			expect(body.status).toBe('error');
+			expect(body.message).toBe('Producto no encontrado');
+		})
 	});
 });

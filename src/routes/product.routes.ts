@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { CreateProductSchema, DeleteProductSchema, DeleteQuerySchema, ProductParamsSchema, UpdateProductSchema } from '../schemas/product.schema.js';
 import { ProductService } from '../services/product.service.js';
+import z from 'zod';
 
 /*******************************************************************************
  * @description: Rutas de Producto (El Punto de Entrada para las Operaciones de Producto)
@@ -26,9 +27,50 @@ export async function productRoutes(app: FastifyInstance) {
 	);
 
 	// * GET /api/products - Listar productos activos
-	server.get('/products', async () => {
-		return await ProductService.list();
+	server.get('/products', {
+		schema: { 
+			querystring: z.object({
+				stock: z.coerce.number().int().nonnegative().optional() // Ejemplo de validación adicional para filtrar por stock (opcional)
+			}) 
+		}
+	}, async (request, response) => {
+		const { stock } = request.query;
+		const products = stock !== undefined ? await ProductService.findByStock(Number(stock)) : await ProductService.list()
+		
+		return response.code(200).send({data: products});
 	});
+
+	// * GET /api/products/:id con validación de params
+	server.get('/products/:id', {
+		schema: { 
+			params: ProductParamsSchema, // Validamos que el ID sea correcto
+			querystring: z.object({
+				stock: z.coerce.number().int().nonnegative().optional() // Ejemplo de validación adicional para filtrar por stock (opcional)
+			}) 
+		}, 
+	}, async (request, response) => {
+		const { id } = request.params;
+		
+		const product = await ProductService.getById(id);
+		if(!product){
+			return response.code(404).send({ status: 'error', message: 'Producto no encontrado' });
+		}
+		return response.code(200).send({data: product})
+	});
+
+	// // * GET /api/products?stock=10 - Listar productos con stock > 10 
+	// server.get('/products',{
+	// 	schema: {
+	// 		querystring: z.object({
+	// 			stock: z.coerce.number().int().nonnegative().optional()
+	// 		})
+	// 	}
+	// }, async (request, response) => {
+	// 		const { stock } = request.query;
+	// 		const products = await ProductService.findByStock(Number(stock));
+	// 		return response.code(200).send({data: products});		
+	// 	}
+	// ),
 
 	// * PUT /api/products/:id con validación de params y body
 	server.put('/products/:id', {
@@ -64,7 +106,7 @@ export async function productRoutes(app: FastifyInstance) {
 
 		// Aquí podríamos implementar la lógica para eliminar el producto (por ejemplo, marcarlo como inactivo)
 		const deleteProduct = await ProductService.delete(id, isLogicBoolean);
-		console.log('Producto eliminado: ', deleteProduct);
+		
 		if (!deleteProduct) {
 			return response
 				.code(404)
