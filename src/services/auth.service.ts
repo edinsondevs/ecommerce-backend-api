@@ -2,15 +2,15 @@ import bcrypt from 'bcrypt';
 // Ajusta la ruta de importación de prisma según tu estructura real (suele ser '../plugins/prisma' o similar)
 import prisma from '../config/prisma.js';
 
-export class AuthService {
+export const AuthService =  {
 	// ==========================================
 	// MÉTODO 1: REGISTRO DE USUARIO
 	// ==========================================
-	static async register(data: {
+	register: async(data: {
 		email: string;
 		password: string;
 		name?: string;
-	}) {
+	}) => {
 		// 1. Verificamos si el correo ya existe
 		const existingUser = await prisma.user.findUnique({
 			where: { email: data.email },
@@ -37,19 +37,19 @@ export class AuthService {
 		// 4. Quitamos el password del objeto antes de devolverlo
 		const { password, ...userWithoutPassword } = user;
 		return userWithoutPassword;
-	}
+	},
 
 	// ==========================================
 	// MÉTODO 2: LOGIN DE USUARIO
 	// ==========================================
-	static async login(data: { email: string; password: string }) {
+	login: async ({ data }: { data: { email: string; password: string } }) => {
 		// 1. Buscamos al usuario
 		const user = await prisma.user.findUnique({
 			where: { email: data.email },
 		});
-
 		// 2. Si no existe, lanzamos error 401
 		if (!user) {
+			// console.log('dentro del if', {user}) // Para depuración, puedes eliminarlo después
 			const error = new Error('Credenciales inválidas');
 			(error as any).statusCode = 401;
 			throw error;

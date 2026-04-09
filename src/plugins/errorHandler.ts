@@ -1,10 +1,20 @@
 import { FastifyError, FastifyRequest, FastifyReply } from 'fastify';
-import { Prisma } from '@prisma/client';
 
 export const errorHandler = (error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
   // 1. Errores de Validación (Zod + Fastify)
   // Fastify inyecta la propiedad 'validation' cuando un esquema falla
   console.log('Error Capturado por el Manejador de Errores Personalizado:', JSON.stringify(error, null, 2));
+  // console.log(
+	// 	"Error Capturado por el Manejador :",
+	// 	error.validation
+  // );
+
+  if(error.statusCode === 401){
+    return reply.status(401).send({
+      status: 'error',
+      message: 'Credenciales inválidas',
+    });
+  }
   if (error.validation) {
     return reply.status(400).send({
       status: 'error',
@@ -33,7 +43,7 @@ export const errorHandler = (error: FastifyError, request: FastifyRequest, reply
     }
 
   // 3. Logs internos para el desarrollador (No se envían al cliente)
-  request.log.error(error);
+  request.log?.error(error);
 
   // 4. Error genérico por defecto (Fallback)
   return reply.status(500).send({

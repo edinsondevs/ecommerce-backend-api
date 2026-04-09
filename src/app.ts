@@ -83,10 +83,10 @@ app.register(AuthService, { prefix: '/api/auth' });
 // 3. Manejador de errores
 app.setErrorHandler(errorHandler);
 
-const start = async () => {
+export const start = async () => {
 	try {
 		await app.listen({ port: process.env.PORT ? Number(process.env.PORT) : 3000 });
-		console.log('🚀 Fastify Server Ready at http://localhost:3000');
+		// console.log('🚀 Fastify Server Ready at http://localhost:3000');
 	} catch (err) {
 		app.log.error(err);
 		process.exit(1);

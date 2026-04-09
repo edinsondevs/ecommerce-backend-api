@@ -33,7 +33,8 @@ export default async function authRoutes(server: FastifyInstance) {
 									field: z.string(),
 									message: z.string(),
 								}),
-							).optional(), // Detalles de errores de validación
+							)
+							.optional(), // Detalles de errores de validación
 					}),
 					409: z.object({
 						status: z.enum(['error']),
@@ -47,9 +48,8 @@ export default async function authRoutes(server: FastifyInstance) {
 			},
 		},
 		async (request, reply) => {
-			
-				const user = await AuthService.register(request.body as any);
-				return reply.code(201).send({ data: user });
+			const user = await AuthService.register(request.body as any);
+			return reply.code(201).send({ data: user });
 		},
 	);
 
@@ -69,11 +69,19 @@ export default async function authRoutes(server: FastifyInstance) {
 						data: LoginResponseSchema,
 					}),
 				},
+				401: z.object({
+					status: z.enum(['error']),
+					message: z.string(),
+				}),
+				500: z.object({
+					status: z.enum(['error']),
+					message: z.string(),
+				}),
 			},
 		},
 		async (request, reply) => {
 			// 1. Verificamos que el usuario y contraseña sean correctos
-			const user = await AuthService.login(request.body as any);
+			const user = await AuthService.login({ data: request.body as any });
 
 			// 2. MAGIA: Firmamos el token JWT.
 			// Le guardamos dentro el ID, email y rol para no tener que buscar al usuario en la DB en cada petición futura.

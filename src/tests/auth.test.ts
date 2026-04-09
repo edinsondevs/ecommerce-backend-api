@@ -12,25 +12,6 @@ interface authResponseInterface {
 	createdAt: any;
 	updatedAt: any;
 }
-
-interface RootObject {
-	data: Data;
-}
-
-interface Data {
-	token: string;
-	user: User;
-}
-
-interface User {
-	id: string;
-	email: string;
-	name: string;
-	role: string;
-	createdAt: string;
-	updatedAt: string;
-}
-
 interface Response {
     status: 'success' | 'error';
     message: string;
@@ -154,6 +135,72 @@ describe('Rutas de Autenticación (/api/auth)', () => {
 
 			expect(responseBody.data).toHaveProperty('token'); // ¡Validamos que venga el JWT!
 			expect(responseBody.data.user.email).toBe('admin2@tienda.com');
+			
 		});
+
+		it('Debería fallar con credenciales inválidas (401)', async () => {
+			// 1. PREPARACIÓN
+			// Prisma devuelve null cuando no encuentra el registro en la DB
+			const mockFindUnique = vi.spyOn(prisma.user, "findUnique").mockResolvedValue(null);
+
+			// 2. ACCIÓN
+			const response = await app.inject({
+				method: "POST",
+				url: "/api/auth/login",
+				payload: {
+					email: "nonexistent@tienda.com",
+					password: "wrong_password",
+				},
+			});
+
+			// 3. VERIFICACIÓN
+            expect(response.statusCode).toBe(401);
+            
+            const body = JSON.parse(response.payload);
+            expect(body.status).toBe('error');
+            expect(body.message).toBe('Credenciales inválidas');
+
+            mockFindUnique.mockRestore();
+		});
+
+		it("Debería fallar si la contraseña es incorrecta (401)", async () => {
+			// 1. PREPARACIÓN
+			const mockDbUser: any = {
+				id: "uuid-123",
+				email: "admin2@tienda.com",
+				password: "hashed_password_mock", // El usuario SÍ existe
+			};
+
+			// Simulamos que SÍ encuentra al usuario
+			const mockFindUnique = vi
+				.spyOn(prisma.user, "findUnique")
+				.mockResolvedValue(mockDbUser);
+
+			// PERO simulamos que bcrypt dice que la contraseña NO coincide (false)
+			const mockCompare = vi
+				.spyOn(bcrypt, "compare")
+				.mockResolvedValue(false as any);
+
+			// 2. ACCIÓN
+			const response = await app.inject({
+				method: "POST",
+				url: "/api/auth/login",
+				payload: {
+					email: "admin2@tienda.com",
+					password: "clave_equivocada", // ❌ Contraseña mal escrita
+				},
+			});
+
+			// 3. VERIFICACIÓN
+			expect(response.statusCode).toBe(401);
+
+			const body = JSON.parse(response.payload);
+			expect(body.status).toBe("error");
+			expect(body.message).toBe("Credenciales inválidas"); // El mensaje debe ser el mismo por seguridad
+
+			mockFindUnique.mockRestore();
+			mockCompare.mockRestore();
+		});
+
 	});
 });

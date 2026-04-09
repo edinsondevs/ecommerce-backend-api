@@ -107,5 +107,6 @@ Desde allí podrás explorar todos los endpoints, ver los esquemas de entrada/sa
 ## 🛣️ Próximos Pasos (Roadmap)
 - [x] Implementar Swagger para documentación interactiva de la API (UI).
 - [x] Configurar suite de pruebas con Vitest (Mocks & Integration Tests).
+- [ ] Implementar test y coverage con Vitest UI para mejor visualización de los test
 - [⏳] Implementar sistema de Autenticación con JWT y Bcrypt (En proceso).
 - [ ] Implementar Role-Based Access Control (RBAC) para proteger la creación/edición de productos.
