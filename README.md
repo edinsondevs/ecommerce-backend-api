@@ -1,6 +1,13 @@
 # 📦 E-Commerce Inventory API (Fastify + Prisma + Zod)
 
-Una API RESTful de nivel de producción para la gestión de inventario de un E-commerce. Este proyecto demuestra la implementación de buenas prácticas de desarrollo backend, arquitectura limpia y seguridad por diseño utilizando el ecosistema moderno de Node.js.
+![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![Fastify](https://img.shields.io/badge/fastify-000000?style=for-the-badge&logo=fastify&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-729B1B?style=for-the-badge&logo=vitest&logoColor=white)
+![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen?style=for-the-badge)
+
+Una API RESTful de nivel de producción para la gestión de inventario y autenticación de un E-commerce. Este proyecto demuestra la implementación de buenas prácticas de desarrollo backend, arquitectura limpia, seguridad por diseño y pruebas exhaustivas utilizando el ecosistema moderno de Node.js.
 
 ## 🚀 Tecnologías Principales
 
@@ -9,26 +16,29 @@ Una API RESTful de nivel de producción para la gestión de inventario de un E-c
 * **ORM:** [Prisma v5](https://www.prisma.io/) - Gestión de base de datos tipada de extremo a extremo.
 * **Base de Datos:** PostgreSQL alojado en [Supabase](https://supabase.com/).
 * **Validación:** [Zod](https://zod.dev/) + `fastify-type-provider-zod` - Validación de esquemas en tiempo de ejecución y tipado inferido.
-* **Testing:** [Vitest](https://vitest.dev/) - Framework de pruebas ultrarrápido. Implementación de pruebas de integración (vía `.inject()`) y unitarias con Mocks (`vi.spyOn`).
+* **Autenticación y Seguridad:** JWT (JSON Web Tokens) vía `@fastify/jwt` y hashing de contraseñas con `bcrypt`.
+* **Testing:** [Vitest](https://vitest.dev/) con c8/v8 para Coverage - Framework de pruebas ultrarrápido con **100% de cobertura**. Implementación de pruebas de integración (vía `.inject()`) y unitarias con Mocks (`vi.spyOn`).
 * **Documentación:** [Swagger (OpenAPI)](https://swagger.io/) - Documentación interactiva y autogenerada conectada directamente a los esquemas de Zod.
 
 ## 🧠 Decisiones de Arquitectura Destacadas
 
 1. **Validación en la "Frontera":** Uso estricto de Zod inyectado en las opciones de las rutas de Fastify. Ninguna petición mal formada llega a la capa de servicios o a la base de datos.
-2. **Manejador Global de Errores (Error Handler):** Centralización de los errores. Los códigos de Prisma (ej. `P2002` de duplicados o `P2025` de no encontrados) y los errores de validación se interceptan y formatean en respuestas HTTP limpias (`400`, `404`, `409`), evitando filtrar información sensible al cliente (`500`).
-3. **Soft Delete (Borrado Lógico):** Los productos no se eliminan físicamente de la base de datos para mantener la integridad referencial y el historial; en su lugar, se actualiza una bandera `isActive`.
-4. **Clean Architecture:** Separación clara de responsabilidades en capas lógicas (`Routes`, `Controllers/Services`, `Schemas`, `Plugins`).
-5. **Estrategia de Testing Híbrida:** Uso del método `.inject()` de Fastify para pruebas de integración sin levantar puertos reales, y uso intensivo de Mocks/Spies para aislar la capa de servicios de la base de datos durante las pruebas unitarias, garantizando tests rápidos y deterministas.
+2. **Seguridad y Autenticación Centralizada:** Las rutas privadas están protegidas por un "Guardia" (Decorador de Fastify) que verifica el token JWT antes de permitir el acceso a los controladores.
+3. **Manejador Global de Errores (Error Handler):** Centralización de los errores. Los códigos de Prisma (ej. `P2002` de duplicados o `P2025` de no encontrados), los errores de validación y de autenticación se interceptan y formatean en respuestas HTTP limpias (`400`, `401`, `404`, `409`), evitando filtrar información sensible al cliente (`500`).
+4. **Soft Delete (Borrado Lógico):** Los productos no se eliminan físicamente de la base de datos para mantener la integridad referencial y el historial; en su lugar, se actualiza una bandera `isActive`.
+5. **Clean Architecture:** Separación clara de responsabilidades en capas lógicas (`Routes`, `Controllers/Services`, `Schemas`, `Plugins`).
+6. **Estrategia de Testing Híbrida (100% Coverage):** Uso del método `.inject()` de Fastify para pruebas de integración sin levantar puertos reales, y uso intensivo de Mocks/Spies para aislar la capa de servicios de la base de datos durante las pruebas unitarias, garantizando tests rápidos, deterministas y una cobertura absoluta.
 
 ## 📁 Estructura del Proyecto
 
 ```text
 src/
- ├── plugins/          # Plugins de Fastify (Manejador de errores, Prisma, Swagger)
+ ├── config/           # Configuraciones globales (Variables de entorno, instancia Prisma)
+ ├── plugins/          # Plugins de Fastify (Manejador de errores, Swagger)
  ├── routes/           # Definición de endpoints HTTP y asociación de esquemas Zod
  ├── services/         # Lógica de negocio pura e interacciones con la Base de Datos
  ├── schemas/          # Esquemas de validación de entrada/salida (Zod)
- ├── tests/            # Suite de pruebas automatizadas (Vitest)
+ ├── tests/            # Suite de pruebas automatizadas (Unitarias e Integración)
  └── app.ts            # Punto de entrada y configuración del servidor Fastify
 prisma/
  └── schema.prisma     # Modelado de datos (User, Product) y configuración del ORM
@@ -85,28 +95,43 @@ La API cuenta con documentación autogenerada y tipada. Una vez que el servidor 
 
 👉 **[http://localhost:3000/docs](http://localhost:3000/docs)**
 
-Desde allí podrás explorar todos los endpoints, ver los esquemas de entrada/salida (Schemas) y ejecutar peticiones de prueba directamente desde el navegador.
+> **🔐 Nota de Seguridad:** Esta API cuenta con rutas protegidas. Para interactuar con los métodos `POST`, `PUT` y `DELETE` de productos, primero debes hacer **Login** (o registrarte) en el endpoint `/api/auth/login`. Copia el token JWT que te devuelve la respuesta y utilízalo en el botón verde **"Authorize"** en la parte superior derecha de la página de Swagger.
 
 ## 📡 Endpoints de la API (Referencia Rápida)
 
 ### 🛡️ Autenticación
 | Método | Endpoint | Descripción | Body (Ejemplo) |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/auth/register` | Registra un nuevo usuario encriptando su contraseña. | `{"email": "admin@test.com", "password": "secure123"}` |
+| **POST** | `/api/auth/register` | Registra un nuevo usuario encriptando su contraseña. | `{"email": "admin@test.com", "password": "secure123", "name": "Admin"}` |
+| **POST** | `/api/auth/login` | Inicia sesión y devuelve un token JWT. | `{"email": "admin@test.com", "password": "secure123"}` |
 
 ### 📦 Inventario (Productos)
-| Método | Endpoint | Descripción | Body (Ejemplo) |
+| Método | Endpoint | Descripción | Acceso |
 | :--- | :--- | :--- | :--- |
-| **GET** | `/api/products` | Lista todos los productos activos. Filtra por `?stock=X`. | - |
-| **POST** | `/api/products` | Crea un nuevo producto. | `{"name": "Mouse", "sku": "MOUSE001", "price": 25, "stock": 50}` |
-| **PUT** | `/api/products/:id` | Actualiza un producto existente (Campos opcionales). | `{"price": 30}` |
-| **DELETE**| `/api/products/:id` | Realiza un Soft Delete (Desactiva el producto). | - |
+| **GET** | `/api/products` | Lista todos los productos activos. Filtra por `?stock=X`. | Público 🌐 |
+| **GET** | `/api/products/:id` | Obtiene los detalles de un producto específico. | Público 🌐 |
+| **POST** | `/api/products` | Crea un nuevo producto. | Privado 🔒 (Requiere JWT) |
+| **PUT** | `/api/products/:id` | Actualiza un producto existente (Campos opcionales). | Privado 🔒 (Requiere JWT) |
+| **DELETE**| `/api/products/:id` | Realiza un Soft Delete (Desactiva el producto). | Privado 🔒 (Requiere JWT) |
 
 *(Nota: Todos los endpoints cuentan con validación estricta en la entrada y en la respuesta. Si se envía un SKU incorrecto, o un precio negativo, la API retornará un `400 Bad Request` automático).*
+
+## 🧪 Pruebas y Cobertura
+
+Para ejecutar la suite completa de pruebas que garantiza el correcto funcionamiento de las rutas, autenticación, manejador de errores y lógica de negocio:
+
+```bash
+# Correr todas las pruebas (Vitest)
+npm run test
+
+# Correr pruebas y generar reporte de cobertura (100% Coverage)
+npm run test:coverage
+```
 
 ## 🛣️ Próximos Pasos (Roadmap)
 - [x] Implementar Swagger para documentación interactiva de la API (UI).
 - [x] Configurar suite de pruebas con Vitest (Mocks & Integration Tests).
-- [ ] Implementar test y coverage con Vitest UI para mejor visualización de los test
-- [⏳] Implementar sistema de Autenticación con JWT y Bcrypt (En proceso).
-- [ ] Implementar Role-Based Access Control (RBAC) para proteger la creación/edición de productos.
+- [x] Implementar sistema de Autenticación robusto con JWT y Bcrypt.
+- [x] Alcanzar 100% de Cobertura de Código (Test Coverage).
+- [x] Implementar Vitest UI para visualización interactiva de tests en el navegador (`npm run test:ui`).
+- [ ] Implementar Role-Based Access Control (RBAC) para proteger la creación/edición de productos (Solo ADMIN).
