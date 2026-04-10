@@ -114,6 +114,7 @@ describe("--------------------          ----------------------------", () => {
 
 			// 3. Verificaciones de Fastify/Zod
 			expect(response.statusCode).toBe(201);
+			expect(response.body).toBeDefined();
 			const body = JSON.parse(response.payload);
 			expect(body.data.id).toBe("123e4567-e89b-12d3-a456-426614174000"); // Comprobamos que nos devolvió el ID simulado
 
@@ -675,6 +676,75 @@ describe("--------------------          ----------------------------", () => {
 
 			// 4. Limpieza
 			mockPrismaUpdate.mockRestore();
+		});
+	});
+});
+
+describe("⚙️ Unit Tests: Product Service", () => {
+	// Limpiamos los espías antes de cada test para no cruzar datos
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("1. Debería crear un producto en la base de datos (create)", async () => {
+		const mockProduct = {
+			name: "Teclado",
+			sku: "TEC-001",
+			price: 50,
+			stock: 10,
+		};
+
+		// Espiamos a Prisma, NO al servicio
+		const mockPrismaCreate = vi
+			.spyOn(prisma.product, "create")
+			.mockResolvedValue(mockProduct as any);
+
+		// Ejecutamos el servicio real
+		const result = await ProductService.create(mockProduct);
+
+		expect(mockPrismaCreate).toHaveBeenCalledWith({ data: mockProduct });
+		expect(result).toEqual(mockProduct);
+	});
+
+	it("2. Debería listar solo los productos activos (list)", async () => {
+		const mockPrismaFindMany = vi
+			.spyOn(prisma.product, "findMany")
+			.mockResolvedValue([
+				{ id: "1", name: "Producto A", isActive: true },
+			] as any);
+
+		const result = await ProductService.list();
+
+		// Verificamos que el servicio le pasó el filtro "isActive: true" a Prisma
+		expect(mockPrismaFindMany).toHaveBeenCalledWith({
+			where: { isActive: true },
+		});
+		expect(result).toHaveLength(1);
+	});
+
+	it("3. Debería obtener un producto por su ID (getById)", async () => {
+		const mockPrismaFindUnique = vi
+			.spyOn(prisma.product, "findUnique")
+			.mockResolvedValue({ id: "uuid-123" } as any);
+
+		await ProductService.getById("uuid-123");
+
+		expect(mockPrismaFindUnique).toHaveBeenCalledWith({
+			where: { id: "uuid-123" },
+		});
+	});
+
+	it("4. Debería eliminar físicamente el producto si isDeleteLogic es false (delete)", async () => {
+		const mockPrismaDelete = vi
+			.spyOn(prisma.product, "delete")
+			.mockResolvedValue({ id: "uuid-123" } as any);
+
+		// Fíjate en la imagen que me enviaste, la línea roja está en el "else" (eliminación física)
+		// Por eso pasamos "false" como segundo parámetro
+		await ProductService.delete("uuid-123", false);
+
+		expect(mockPrismaDelete).toHaveBeenCalledWith({
+			where: { id: "uuid-123" },
 		});
 	});
 });
