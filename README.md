@@ -59,7 +59,20 @@ cd ecommerce-backend_v2
 ### 3. Instalar dependencias
 ```bash
 npm install
+# O si usas pnpm
+pnpm install
 ```
+
+> [!IMPORTANT]
+> **Nota para usuarios de pnpm v10+:**
+> pnpm v10 bloquea la ejecución de scripts de construcción por defecto. Si el cliente de Prisma no se genera automáticamente (causando el error `Cannot find module '.prisma/client/default'`), genera manualmente el cliente:
+> ```bash
+> npx prisma generate
+> ```
+> O autoriza los scripts permanentemente para evitar este problema en el futuro:
+> ```bash
+> pnpm approve-builds
+> ```
 
 ### 4. Configurar Variables de Entorno
 Crea un archivo `.env` en la raíz del proyecto y agrega tus credenciales de base de datos:
